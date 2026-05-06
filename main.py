@@ -1,17 +1,14 @@
 import argparse
 import json
-import re
-import sys
 from pathlib import Path
-
+import re
 import requests
-
+import sys
+from config import OLLAMA_URL, OLLAMA_MODEL, DIRETORIO_RAIZ, LOG_FILE
 from assistente import Contexto
+from prompts import SYSTEM_PROMPT
 
-OLLAMA_URL = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "deepseek-coder:6.7b"
 DIRETORIO_RAIZ = Path.cwd()
-LOG_FILE = "log.txt"
 
 
 def log_separator(char: str = "-", length: int = 60):
@@ -136,50 +133,7 @@ TOOL_MAP = {
 # ---------------------------------------------------------------------------
 # FERRAMENTAS do Assistente
 # ---------------------------------------------------------------------------
-SYSTEM_PROMPT = """voce e um assistente que faz manutencao e ajuda a organizar arquivos locais, com as ferramentas.
-
-=== FERRAMENTAS ===
-Para executar acoes no sistema de arquivos ou Git, inclua na sua resposta
-um bloco no formato exato abaixo (um por vez):
-
-```tool_call
-{"action": "nome", ...parametros}
-```
-
-Acoes disponiveis:
-
-Criar arquivo:
-```tool_call
-{"action":"criar_arquivo","path":"caminho/arquivo.cs","content":"conteudo completo aqui"}
-```
-
-Editar arquivo (inserir apos ancora):
-```tool_call
-{"action":"editar_arquivo","path":"caminho","anchor":"//texto_ancora","insert":"trecho novo"}
-```
-
-Ler arquivo:
-```tool_call
-{"action":"ler_arquivo","path":"caminho/arquivo"}
-```
-
-Listar diretorio:
-```tool_call
-{"action":"listar_arquivo","path":"caminho/pasta"}
-```
-
-Mover arquivo:
-```tool_call
-{"action":"mover_arquivo","origem":"caminho/origem","destino":"caminho/destino"}
-```
-
-Executar comando local no Windows:
-```tool_call
-{"action":"executar_comando","shell":"cmd","command":"dir caminho/arquivo"}
-```
-
-"""
-
+system_prompt = SYSTEM_PROMPT
 
 def mode_interactive(ctx):
     log_separator()
@@ -268,7 +222,7 @@ def chat_ollama(messages: list[dict], iteration: int) -> str:
 
 def run_agent(user_message: str) -> str:
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_message},
     ]
 
