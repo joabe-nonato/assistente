@@ -1,0 +1,86 @@
+06/05/2026 14:57 executar_rotina
+------------------------------------------------------------
+06/05/2026 14:57 Inicio do processo
+06/05/2026 14:57 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+------------------------------------------------------------
+06/05/2026 15:27 executar_rotina
+------------------------------------------------------------
+06/05/2026 15:27 Inicio do processo
+06/05/2026 15:27 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+------------------------------------------------------------
+06/05/2026 15:27 Processo encerrado pelo usuario.
+06/05/2026 15:27 executar_rotina
+------------------------------------------------------------
+06/05/2026 15:27 Inicio do processo
+06/05/2026 15:27 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+------------------------------------------------------------
+06/05/2026 15:27 Processo encerrado pelo usuario.
+06/05/2026 15:28 executar_rotina
+------------------------------------------------------------
+06/05/2026 15:28 Inicio do processo
+06/05/2026 15:28 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+------------------------------------------------------------
+06/05/2026 15:28 Processo encerrado pelo usuario.
+06/05/2026 15:32 executar_rotina
+------------------------------------------------------------
+06/05/2026 15:32 Inicio do processo
+06/05/2026 15:32 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+------------------------------------------------------------
+06/05/2026 15:45 executar_rotina
+------------------------------------------------------------
+06/05/2026 15:45 Inicio do processo
+06/05/2026 15:45 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+------------------------------------------------------------
+06/05/2026 15:46 executar_rotina
+------------------------------------------------------------
+06/05/2026 15:46 Inicio do processo
+06/05/2026 15:46 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+------------------------------------------------------------
+06/05/2026 15:49 Instrucao recebida: Testando o chat
+------------------------------------------------------------
+06/05/2026 15:49 Inicio do agente | Modelo: deepseek-coder:6.7b
+------------------------------------------------------------
+06/05/2026 15:49 [Iteracao 1] Enviando prompt ao Ollama (aguardando resposta sem limite de tempo)...
+06/05/2026 15:55 executar_rotina
+------------------------------------------------------------
+06/05/2026 15:55 Inicio do processo
+06/05/2026 15:55 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+------------------------------------------------------------
+06/05/2026 15:55 Assistente iniciado
+06/05/2026 15:55 Em que posso ajudar?
+06/05/2026 15:58 executar_rotina
+------------------------------------------------------------
+06/05/2026 15:58 Inicio do processo
+06/05/2026 15:58 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+------------------------------------------------------------
+06/05/2026 15:58 Assistente iniciado
+06/05/2026 15:58 Digite o que deseja ou 'Sair' para encerrar
+------------------------------------------------------------
+06/05/2026 15:58 Em que posso ajudar?
+06/05/2026 16:01 executar_rotina
+------------------------------------------------------------
+06/05/2026 16:01 Inicio do processo
+06/05/2026 16:01 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+06/05/2026 16:01  
+06/05/2026 16:01 Digite o que deseja ou 'Sair' para encerrar
+------------------------------------------------------------
+06/05/2026 16:01 Em que posso ajudar?
+------------------------------------------------------------
+06/05/2026 16:01 Inicio do processo
+06/05/2026 16:01 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+06/05/2026 16:01  
+06/05/2026 16:01 Digite o que deseja ou 'Sair' para encerrar
+------------------------------------------------------------
+06/05/2026 16:01 Em que posso ajudar?
+------------------------------------------------------------
+06/05/2026 16:14 Inicio do processo
+06/05/2026 16:14 Modo: Interativo | Modelo: deepseek-coder:6.7b | WorkDir: D:\Projetos\pessoal\assistente-pessoal
+06/05/2026 16:14  
+06/05/2026 16:14 Digite o que deseja ou 'Sair' para encerrar
+------------------------------------------------------------
+06/05/2026 16:14 Em que posso ajudar?
+06/05/2026 16:14 Instrucao recebida: listar os arquivos da pasta: D:\Projetos\pessoal\assistente-pessoal\test
+------------------------------------------------------------
+06/05/2026 16:14 Inicio do agente | Modelo: deepseek-coder:6.7b
+------------------------------------------------------------
+06/05/2026 16:14 [Iteracao 1] Enviando prompt ao Ollama (aguardando resposta sem limite de tempo)...

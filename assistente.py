@@ -27,6 +27,7 @@ class Contexto:
         return agora.strftime("%d/%m/%Y %H:%M")
 
     def log(self, texto):
+        print(texto)
         self.gravar_arquivo("log.txt", f"{self.data_hora()} {texto}")
 
     def gravar_arquivo(self, caminho_arquivo, texto):

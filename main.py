@@ -175,7 +175,7 @@ Mover arquivo:
 
 Executar comando local no Windows:
 ```tool_call
-{"action":"executar_comando","shell":"cmd","command":"dir D:\\Projetos\\IA\\assistente-pessoal"}
+{"action":"executar_comando","shell":"cmd","command":"dir caminho/arquivo"}
 ```
 
 """
@@ -184,25 +184,27 @@ Executar comando local no Windows:
 def mode_interactive(ctx):
     log_separator()
     ctx.log("Inicio do processo")
-    ctx.log(f"Modo: Interativo | Modelo: {OLLAMA_MODEL} | WorkDir: {DIRETORIO_RAIZ}")
+    ctx.log(f"Modo: Interativo | Modelo: {OLLAMA_MODEL} | WorkDir: {DIRETORIO_RAIZ}")    
+    ctx.log(" ")
+    ctx.log("Digite o que deseja ou 'Sair' para encerrar")    
     log_separator()
-    print("\nDigite 'sair' para encerrar.\n")
+    ctx.log("Em que posso ajudar?")
+    
     while True:
         try:
             user_input = input(">>> ").strip()
         except (EOFError, KeyboardInterrupt):
             ctx.log("Processo encerrado pelo usuario.")
             break
-
         if user_input.lower() in ("sair", "exit", "quit"):
             ctx.log("Processo encerrado pelo usuario.")
             break
-
         if not user_input:
             continue
-
         ctx.log(f"Instrucao recebida: {user_input[:120]}")
         run_agent(user_input)
+    
+        
 
 
 def chat_ollama(messages: list[dict], iteration: int) -> str:
@@ -310,14 +312,10 @@ def run_agent(user_message: str) -> str:
 
 def main():
     global ctx
-
     parser = argparse.ArgumentParser(description="Assistente - Ollama / DeepSeek local")
     parser.parse_args()
-
-    ctx = Contexto()
-    ctx.log("executar_rotina")
+    ctx = Contexto()    
     mode_interactive(ctx)
-
 
 if __name__ == "__main__":
     main()
