@@ -1,0 +1,6 @@
+### D:\Projetos\pessoal\assistente-pessoal\test\arquivo_teste1.txt
+arquivo_teste1.txt
+
+
+### D:\Projetos\pessoal\assistente-pessoal\test\arquivo_teste2.txt
+teste arquivo_teste2.txt

@@ -6,12 +6,9 @@ from pathlib import Path
 
 import requests
 
+from config import OLLAMA_URL, OLLAMA_MODEL, DIRETORIO_RAIZ, LOG_FILE
 from assistente import Contexto
-
-OLLAMA_URL = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "deepseek-coder:6.7b"
-DIRETORIO_RAIZ = Path.cwd()
-LOG_FILE = "log.txt"
+from prompts import SYSTEM_PROMPT
 
 
 def log_separator(char: str = "-", length: int = 60):
@@ -76,6 +73,26 @@ def resolve_path(path_str: str) -> Path:
     return p
 
 
+def coerce_bool(value, default=True) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "sim", "s", "yes", "y")
+    return bool(value)
+
+
+def resolve_path_list(value) -> list[Path]:
+    if value is None:
+        return []
+    if isinstance(value, (str, Path)):
+        return [resolve_path(value)]
+    if isinstance(value, list):
+        return [resolve_path(item) for item in value]
+    return [resolve_path(value)]
+
+
 def ferramenta_listar_arquivo(path: str) -> str:
     p = resolve_path(path)
     return ctx.listar_arquivos(p)
@@ -121,6 +138,43 @@ def ferramenta_mover_arquivo(origem: str, destino: str) -> str:
     return ctx.mover_arquivo(resolve_path(origem), resolve_path(destino))
 
 
+def ferramenta_concatenar_arquivos(arquivos, destino: str, separador: str = "\n\n") -> str:
+    arquivos_resolvidos = resolve_path_list(arquivos)
+    return ctx.concatenar_arquivos(arquivos_resolvidos, resolve_path(destino), separador=separador)
+
+
+def ferramenta_copiar_conteudo_diretorio(
+    diretorio: str,
+    destino: str,
+    recursivo: bool = True,
+    separador: str = "\n\n",
+) -> str:
+    return ctx.copiar_conteudo_diretorio(
+        resolve_path(diretorio),
+        resolve_path(destino),
+        recursivo=coerce_bool(recursivo, True),
+        separador=separador,
+    )
+
+
+def ferramenta_copiar_arquivos_para_texto(
+    destino: str,
+    arquivos=None,
+    diretorio=None,
+    recursivo: bool = True,
+    separador: str = "\n\n",
+) -> str:
+    arquivos_resolvidos = resolve_path_list(arquivos) if arquivos else None
+    diretorio_resolvido = resolve_path(diretorio) if diretorio else None
+    return ctx.copiar_arquivos_para_texto(
+        resolve_path(destino),
+        arquivos=arquivos_resolvidos,
+        diretorio=diretorio_resolvido,
+        recursivo=coerce_bool(recursivo, True),
+        separador=separador,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -131,78 +185,55 @@ TOOL_MAP = {
     "listar_arquivo": lambda d: ferramenta_listar_arquivo(d["path"]),
     "mover_arquivo": lambda d: ferramenta_mover_arquivo(d["origem"], d["destino"]),
     "executar_comando": lambda d: ferramenta_executar_comando(d["command"], d.get("shell", "cmd")),
+    "concatenar_arquivos": lambda d: ferramenta_concatenar_arquivos(
+        d.get("arquivos") or d.get("paths") or [],
+        d["destino"],
+        d.get("separador", "\n\n"),
+    ),
+    "copiar_conteudo_diretorio": lambda d: ferramenta_copiar_conteudo_diretorio(
+        d.get("diretorio") or d.get("path") or d.get("origem"),
+        d["destino"],
+        d.get("recursivo", True),
+        d.get("separador", "\n\n"),
+    ),
+    "copiar_arquivos_para_texto": lambda d: ferramenta_copiar_arquivos_para_texto(
+        d["destino"],
+        arquivos=d.get("arquivos") or d.get("paths"),
+        diretorio=d.get("diretorio") or d.get("path") or d.get("origem"),
+        recursivo=d.get("recursivo", True),
+        separador=d.get("separador", "\n\n"),
+    ),
 }
 
 # ---------------------------------------------------------------------------
 # FERRAMENTAS do Assistente
 # ---------------------------------------------------------------------------
-SYSTEM_PROMPT = """voce e um assistente que faz manutencao e ajuda a organizar arquivos locais, com as ferramentas.
-
-=== FERRAMENTAS ===
-Para executar acoes no sistema de arquivos ou Git, inclua na sua resposta
-um bloco no formato exato abaixo (um por vez):
-
-```tool_call
-{"action": "nome", ...parametros}
-```
-
-Acoes disponiveis:
-
-Criar arquivo:
-```tool_call
-{"action":"criar_arquivo","path":"caminho/arquivo.cs","content":"conteudo completo aqui"}
-```
-
-Editar arquivo (inserir apos ancora):
-```tool_call
-{"action":"editar_arquivo","path":"caminho","anchor":"//texto_ancora","insert":"trecho novo"}
-```
-
-Ler arquivo:
-```tool_call
-{"action":"ler_arquivo","path":"caminho/arquivo"}
-```
-
-Listar diretorio:
-```tool_call
-{"action":"listar_arquivo","path":"caminho/pasta"}
-```
-
-Mover arquivo:
-```tool_call
-{"action":"mover_arquivo","origem":"caminho/origem","destino":"caminho/destino"}
-```
-
-Executar comando local no Windows:
-```tool_call
-{"action":"executar_comando","shell":"cmd","command":"dir D:\\Projetos\\IA\\assistente-pessoal"}
-```
-
-"""
-
+system_prompt = SYSTEM_PROMPT
 
 def mode_interactive(ctx):
     log_separator()
     ctx.log("Inicio do processo")
-    ctx.log(f"Modo: Interativo | Modelo: {OLLAMA_MODEL} | WorkDir: {DIRETORIO_RAIZ}")
+    ctx.log(f"Modo: Interativo | Modelo: {OLLAMA_MODEL} | WorkDir: {DIRETORIO_RAIZ}")    
+    ctx.log(" ")
+    ctx.log("Digite o que deseja ou 'Sair' para encerrar")    
     log_separator()
-    print("\nDigite 'sair' para encerrar.\n")
+    ctx.log("Em que posso ajudar?")
+    
     while True:
         try:
             user_input = input(">>> ").strip()
         except (EOFError, KeyboardInterrupt):
             ctx.log("Processo encerrado pelo usuario.")
             break
-
         if user_input.lower() in ("sair", "exit", "quit"):
             ctx.log("Processo encerrado pelo usuario.")
             break
-
         if not user_input:
             continue
-
         ctx.log(f"Instrucao recebida: {user_input[:120]}")
         run_agent(user_input)
+    
+        
 
 
 def chat_ollama(messages: list[dict], iteration: int) -> str:
@@ -266,7 +297,7 @@ def chat_ollama(messages: list[dict], iteration: int) -> str:
 
 def run_agent(user_message: str) -> str:
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_message},
     ]
 
@@ -310,14 +341,10 @@ def run_agent(user_message: str) -> str:
 
 def main():
     global ctx
-
     parser = argparse.ArgumentParser(description="Assistente - Ollama / DeepSeek local")
     parser.parse_args()
-
-    ctx = Contexto()
-    ctx.log("executar_rotina")
+    ctx = Contexto()    
     mode_interactive(ctx)
-
 
 if __name__ == "__main__":
     main()
