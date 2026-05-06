@@ -1,14 +1,14 @@
 import argparse
 import json
-from pathlib import Path
 import re
-import requests
 import sys
+from pathlib import Path
+
+import requests
+
 from config import OLLAMA_URL, OLLAMA_MODEL, DIRETORIO_RAIZ, LOG_FILE
 from assistente import Contexto
 from prompts import SYSTEM_PROMPT
-
-DIRETORIO_RAIZ = Path.cwd()
 
 
 def log_separator(char: str = "-", length: int = 60):
@@ -73,6 +73,26 @@ def resolve_path(path_str: str) -> Path:
     return p
 
 
+def coerce_bool(value, default=True) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "sim", "s", "yes", "y")
+    return bool(value)
+
+
+def resolve_path_list(value) -> list[Path]:
+    if value is None:
+        return []
+    if isinstance(value, (str, Path)):
+        return [resolve_path(value)]
+    if isinstance(value, list):
+        return [resolve_path(item) for item in value]
+    return [resolve_path(value)]
+
+
 def ferramenta_listar_arquivo(path: str) -> str:
     p = resolve_path(path)
     return ctx.listar_arquivos(p)
@@ -118,6 +138,43 @@ def ferramenta_mover_arquivo(origem: str, destino: str) -> str:
     return ctx.mover_arquivo(resolve_path(origem), resolve_path(destino))
 
 
+def ferramenta_concatenar_arquivos(arquivos, destino: str, separador: str = "\n\n") -> str:
+    arquivos_resolvidos = resolve_path_list(arquivos)
+    return ctx.concatenar_arquivos(arquivos_resolvidos, resolve_path(destino), separador=separador)
+
+
+def ferramenta_copiar_conteudo_diretorio(
+    diretorio: str,
+    destino: str,
+    recursivo: bool = True,
+    separador: str = "\n\n",
+) -> str:
+    return ctx.copiar_conteudo_diretorio(
+        resolve_path(diretorio),
+        resolve_path(destino),
+        recursivo=coerce_bool(recursivo, True),
+        separador=separador,
+    )
+
+
+def ferramenta_copiar_arquivos_para_texto(
+    destino: str,
+    arquivos=None,
+    diretorio=None,
+    recursivo: bool = True,
+    separador: str = "\n\n",
+) -> str:
+    arquivos_resolvidos = resolve_path_list(arquivos) if arquivos else None
+    diretorio_resolvido = resolve_path(diretorio) if diretorio else None
+    return ctx.copiar_arquivos_para_texto(
+        resolve_path(destino),
+        arquivos=arquivos_resolvidos,
+        diretorio=diretorio_resolvido,
+        recursivo=coerce_bool(recursivo, True),
+        separador=separador,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -128,6 +185,24 @@ TOOL_MAP = {
     "listar_arquivo": lambda d: ferramenta_listar_arquivo(d["path"]),
     "mover_arquivo": lambda d: ferramenta_mover_arquivo(d["origem"], d["destino"]),
     "executar_comando": lambda d: ferramenta_executar_comando(d["command"], d.get("shell", "cmd")),
+    "concatenar_arquivos": lambda d: ferramenta_concatenar_arquivos(
+        d.get("arquivos") or d.get("paths") or [],
+        d["destino"],
+        d.get("separador", "\n\n"),
+    ),
+    "copiar_conteudo_diretorio": lambda d: ferramenta_copiar_conteudo_diretorio(
+        d.get("diretorio") or d.get("path") or d.get("origem"),
+        d["destino"],
+        d.get("recursivo", True),
+        d.get("separador", "\n\n"),
+    ),
+    "copiar_arquivos_para_texto": lambda d: ferramenta_copiar_arquivos_para_texto(
+        d["destino"],
+        arquivos=d.get("arquivos") or d.get("paths"),
+        diretorio=d.get("diretorio") or d.get("path") or d.get("origem"),
+        recursivo=d.get("recursivo", True),
+        separador=d.get("separador", "\n\n"),
+    ),
 }
 
 # ---------------------------------------------------------------------------
