@@ -6,7 +6,14 @@ from pathlib import Path
 
 import requests
 
-from config import OLLAMA_URL, OLLAMA_MODEL, DIRETORIO_RAIZ, LOG_FILE
+from config import (
+    DIRETORIO_RAIZ,
+    LOG_FILE,
+    MEMORIA_FILE,
+    MEMORIA_MAX_ENTRADAS,
+    OLLAMA_MODEL,
+    OLLAMA_URL,
+)
 from assistente import Contexto
 from prompts import SYSTEM_PROMPT
 
@@ -93,9 +100,18 @@ def resolve_path_list(value) -> list[Path]:
     return [resolve_path(value)]
 
 
-def ferramenta_listar_arquivo(path: str) -> str:
+
+def build_system_prompt() -> str:
+    memoria = ctx.carregar_memoria()
+    if not memoria:
+        return SYSTEM_PROMPT
+
+    return f"{SYSTEM_PROMPT}\n\n=== MEMÓRIA DA SESSÃO ===\n{memoria}\n"
+
+
+def ferramenta_listar_diretorio(path: str) -> str:
     p = resolve_path(path)
-    return ctx.listar_arquivos(p)
+    return ctx.listar_diretorios(p)
 
 
 def ferramenta_executar_comando(comando: str, shell: str = "cmd") -> str:
@@ -157,7 +173,7 @@ def ferramenta_copiar_conteudo_diretorio(
     )
 
 
-def ferramenta_copiar_arquivos_para_texto(
+def ferramenta_copiar_arquivos(
     destino: str,
     arquivos=None,
     diretorio=None,
@@ -166,7 +182,7 @@ def ferramenta_copiar_arquivos_para_texto(
 ) -> str:
     arquivos_resolvidos = resolve_path_list(arquivos) if arquivos else None
     diretorio_resolvido = resolve_path(diretorio) if diretorio else None
-    return ctx.copiar_arquivos_para_texto(
+    return ctx.copiar_arquivos(
         resolve_path(destino),
         arquivos=arquivos_resolvidos,
         diretorio=diretorio_resolvido,
@@ -182,7 +198,7 @@ TOOL_MAP = {
     "criar_arquivo": lambda d: ferramenta_criar_arquivo(d["path"], d["content"]),
     "editar_arquivo": lambda d: ferramenta_editar_arquivo(d["path"], d["anchor"], d["insert"]),
     "ler_arquivo": lambda d: ferramenta_ler_arquivo(d["path"]),
-    "listar_arquivo": lambda d: ferramenta_listar_arquivo(d["path"]),
+    "listar_diretorio": lambda d: ferramenta_listar_diretorio(d["path"]),
     "mover_arquivo": lambda d: ferramenta_mover_arquivo(d["origem"], d["destino"]),
     "executar_comando": lambda d: ferramenta_executar_comando(d["command"], d.get("shell", "cmd")),
     "concatenar_arquivos": lambda d: ferramenta_concatenar_arquivos(
@@ -196,7 +212,7 @@ TOOL_MAP = {
         d.get("recursivo", True),
         d.get("separador", "\n\n"),
     ),
-    "copiar_arquivos_para_texto": lambda d: ferramenta_copiar_arquivos_para_texto(
+    "copiar_arquivos": lambda d: ferramenta_copiar_arquivos(
         d["destino"],
         arquivos=d.get("arquivos") or d.get("paths"),
         diretorio=d.get("diretorio") or d.get("path") or d.get("origem"),
@@ -208,8 +224,6 @@ TOOL_MAP = {
 # ---------------------------------------------------------------------------
 # FERRAMENTAS do Assistente
 # ---------------------------------------------------------------------------
-system_prompt = SYSTEM_PROMPT
-
 def mode_interactive(ctx):
     log_separator()
     ctx.log("Inicio do processo")
@@ -295,11 +309,14 @@ def chat_ollama(messages: list[dict], iteration: int) -> str:
     return full_text
 
 
-def run_agent(user_message: str) -> str:
+def run_agent(user_message: str) -> str:                 
+    ctx.mensagem = f"{user_message}, use 'tool_call'"    
+    
     messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_message},
+        {"role": "system", "content": build_system_prompt()},
+        {"role": "user", "content": ctx.mensagem},
     ]
+    executed_tools: list[str] = []
 
     log_separator()
     ctx.log(f"Inicio do agente | Modelo: {OLLAMA_MODEL}")
@@ -319,17 +336,22 @@ def run_agent(user_message: str) -> str:
             log_separator()
             ctx.log("Execucao concluida com sucesso.")
             log_separator()
+            ctx.registrar_memoria(ctx.mensagem, executed_tools, assistant_text)
             return assistant_text
 
         results = []
         for call in tool_calls:
             tool_name = normalize_tool_name(call)
+            executed_tools.append(tool_name)
             ctx.log(f"  Executando ferramenta: {tool_name}")
             result = dispatch_tool(call)
-            preview = result[:200] + ("..." if len(result) > 200 else "")
+            preview = result[:200] + ("..." if len(result) > 200 else "")            
             ctx.log(f"  Resultado: {preview}")
             results.append(f"Resultado '{tool_name}':\n{result}")
-
+            
+            if not preview == '' and not '[ERRO]' in preview :                
+                ctx.registrar_memoria(ctx.mensagem, executed_tools, preview)
+            
         messages.append({
             "role": "user",
             "content": "\n\n".join(results),
@@ -338,13 +360,21 @@ def run_agent(user_message: str) -> str:
     ctx.log("[AVISO] Limite de iteracoes atingido.")
     return "[AVISO] Limite de iteracoes atingido."
 
+def teste(block):
+    call_test = json.loads(block.strip())    
+    ctx.log(f"Teste:\n{dispatch_tool(call_test)}")
 
 def main():
     global ctx
     parser = argparse.ArgumentParser(description="Assistente - Ollama / DeepSeek local")
     parser.parse_args()
-    ctx = Contexto()    
-    mode_interactive(ctx)
+    ctx = Contexto(MEMORIA_FILE, MEMORIA_MAX_ENTRADAS)    
+    ctx.inicializar_memoria()
+    
+    # return teste('{"action":"listar_diretorio","path":"D:/Projetos/pessoal/assistente/test"}')    
+    
+    mode_interactive(ctx)      
+    
 
 if __name__ == "__main__":
     main()

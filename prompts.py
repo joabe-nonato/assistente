@@ -29,9 +29,9 @@ Ler arquivo:
 {"action":"ler_arquivo","path":"caminho/arquivo"}
 ```
 
-Listar diretorio:
+listar diretorio ou pasta (lista conteúdo do diretorio e subdiretorio):
 ```tool_call
-{"action":"listar_arquivo","path":"caminho/pasta"}
+{"action":"listar_diretorio","path":"caminho/pasta"}
 ```
 
 Mover arquivo:

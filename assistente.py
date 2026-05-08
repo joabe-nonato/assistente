@@ -1,25 +1,56 @@
 from datetime import datetime
 from pathlib import Path
 import os
+import re
 import shutil
 import subprocess
+from config import MODO_DEBUG
 
+def resumir_texto(texto: str, limite: int) -> str:
+    texto = re.sub(r"\s+", " ", str(texto or "").strip())
+    if len(texto) <= limite:
+        return texto
+    return texto[: max(0, limite - 3)].rstrip() + "..."
 
 def tem_extensao(caminho):
     return os.path.splitext(str(caminho))[1] != ""
 
+def listar_sudiretorios(caminho_arquivo):
+        p = Path(caminho_arquivo)
+        
+        if not p.exists():
+            return f"[ERRO] Caminho nao encontrado: {p}"
+
+        if p.is_file():
+            stat = p.stat()
+            return (
+                f"ARQUIVO: {p.name}\n"
+                f"Tamanho: {stat.st_size} bytes\n"
+                f"Caminho: {p}"
+            )
+
+        itens = []
+        for item in sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
+            tipo = "DIR " if item.is_dir() else "FILE"
+            itens.append(f"{tipo}: {caminho_arquivo}\\{item.name}")
+            
+        return itens
 
 class Contexto:
-    def __init__(self):
+    def __init__(self, arquivo_memoria, memoria_maxima):
+        self.arquivo_memoria = arquivo_memoria
+        self.memoria_maxima = memoria_maxima
         self.prompt = ""
-        self.texto = ""
-        self.acao = ""
+        self.mensagem = ""
+        self.memoria = ""
+        self.lista_diretorios = []
+        
 
     def __str__(self):
         return f"""
         prompt: {self.prompt}
-        texto: {self.texto}
-        acao: {self.acao}
+        texto: {self.mensagem}
+        acao: {self.memoria}
     """
 
     def data_hora(self):
@@ -28,7 +59,8 @@ class Contexto:
 
     def log(self, texto):
         print(texto)
-        self.gravar_arquivo("log.txt", f"{self.data_hora()} {texto}")
+        if MODO_DEBUG:            
+            self.gravar_arquivo("log.txt", f"{self.data_hora()} {texto}")
 
     def gravar_arquivo(self, caminho_arquivo, texto):
         with open(caminho_arquivo, "a", encoding="utf-8") as arquivo:
@@ -51,10 +83,10 @@ class Contexto:
 
     def arquivo_existe(self, caminho_arquivo):
         return Path(caminho_arquivo).exists()
-
-    def listar_arquivos(self, caminho_arquivo):
+    
+    def listar_diretorios(self, caminho_arquivo):
         p = Path(caminho_arquivo)
-
+        
         if not p.exists():
             return f"[ERRO] Caminho nao encontrado: {p}"
 
@@ -69,7 +101,14 @@ class Contexto:
         itens = []
         for item in sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
             tipo = "DIR " if item.is_dir() else "FILE"
-            itens.append(f"{tipo}  {item.name}")
+            itens.append(f"{tipo}: {p}\\{item.name}")
+            if item.is_dir():
+                self.lista_diretorios.append(item.name)
+            
+        for subdiretorio in self.lista_diretorios:
+            sublista = listar_sudiretorios(f"{p}\\{subdiretorio}")
+            for subitem in sublista:
+                itens.append(subitem)
 
         return "\n".join(itens) if itens else f"[OK] Pasta vazia: {p}"
 
@@ -220,3 +259,44 @@ class Contexto:
     def excluir_todos_arquivos_diretorio(self, caminho_diretorio):
         if os.path.isdir(caminho_diretorio):
             shutil.rmtree(caminho_diretorio)
+
+# ---------------------------------------------------------------------------
+# MEMÓRIA
+# ---------------------------------------------------------------------------
+
+    def inicializar_memoria(self):
+        self.arquivo_memoria.parent.mkdir(parents=True, exist_ok=True)
+        self.arquivo_memoria.write_text("# Memória da sessão\n\n", encoding="utf-8")
+
+
+    def carregar_memoria(self) -> str:
+        if not self.arquivo_memoria.exists():
+            return ""
+
+        linhas = self.arquivo_memoria.read_text(encoding="utf-8").splitlines()
+        if not any(line.startswith("- ") for line in linhas):
+            return ""
+
+        return "\n".join(linhas).strip()
+
+
+    def registrar_memoria(self, user_message: str, tool_names: list[str], assistant_text: str):
+        entradas = []
+        if self.arquivo_memoria.exists():
+            for line in self.arquivo_memoria.read_text(encoding="utf-8").splitlines():
+                if line.startswith("- "):
+                    entradas.append(line)
+
+        ferramentas = ", ".join(dict.fromkeys(tool_names)) if tool_names else "nenhuma ferramenta"
+        entrada = (
+            f"- Pedido: {resumir_texto(user_message, 220)} | "
+            f"Ferramentas: {ferramentas} | "
+            f"Resultado: {resumir_texto(assistant_text, 440)}"
+        )
+        entradas.append(entrada)
+        entradas = entradas[-self.memoria_maxima:]
+
+        conteudo = "# Memória da sessão\n\n"
+        if entradas:
+            conteudo += "\n".join(entradas) + "\n"
+        self.arquivo_memoria.write_text(conteudo, encoding="utf-8")
