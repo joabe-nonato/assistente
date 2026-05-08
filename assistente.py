@@ -280,7 +280,7 @@ class Contexto:
         return "\n".join(linhas).strip()
 
 
-    def registrar_memoria(self, user_message: str, tool_names: list[str], assistant_text: str):
+    def registrar_memoria(self, user_message: str, tool_names: list[str], resultado: str):
         entradas = []
         if self.arquivo_memoria.exists():
             for line in self.arquivo_memoria.read_text(encoding="utf-8").splitlines():
@@ -291,7 +291,7 @@ class Contexto:
         entrada = (
             f"- Pedido: {resumir_texto(user_message, 220)} | "
             f"Ferramentas: {ferramentas} | "
-            f"Resultado: {resumir_texto(assistant_text, 440)}"
+            f"Resultado: {resumir_texto(resultado, 440)}"
         )
         entradas.append(entrada)
         entradas = entradas[-self.memoria_maxima:]

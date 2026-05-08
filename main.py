@@ -13,6 +13,7 @@ from config import (
     MEMORIA_MAX_ENTRADAS,
     OLLAMA_MODEL,
     OLLAMA_URL,
+    TEMPERATURA_PADRAO,
 )
 from assistente import Contexto
 from prompts import SYSTEM_PROMPT
@@ -107,6 +108,50 @@ def build_system_prompt() -> str:
         return SYSTEM_PROMPT
 
     return f"{SYSTEM_PROMPT}\n\n=== MEMÓRIA DA SESSÃO ===\n{memoria}\n"
+
+
+def tarefa_executavel_localmente(user_message: str) -> bool:
+    texto = user_message.lower()
+    palavras = (
+        "listar",
+        "mover",
+        "copiar",
+        "criar",
+        "editar",
+        "ler",
+        "excluir",
+        "apagar",
+        "remover",
+        "renomear",
+        "listar itens",
+        "conteúdo",
+        "conteudo",
+        "pasta",
+        "diretório",
+        "diretorio",
+        "arquivo",
+        ".txt",
+        ".md",
+        ".json",
+        ".py",
+        ".csv",
+        ":\\",
+        "/",
+    )
+    return any(palavra in texto for palavra in palavras)
+
+
+def resposta_valida_para_acao(texto: str) -> bool:
+    if not texto.strip():
+        return False
+    return bool(extract_tool_calls(texto))
+
+
+def mensagem_correcao_tool_call() -> str:
+    return (
+        "Sua resposta anterior não seguiu o formato obrigatório. "
+        "Responda novamente APENAS com um único bloco tool_call JSON, sem texto extra, sem código, sem explicação."
+    )
 
 
 def ferramenta_listar_diretorio(path: str) -> str:
@@ -256,7 +301,7 @@ def chat_ollama(messages: list[dict], iteration: int) -> str:
         "messages": messages,
         "stream": True,
         "options": {
-            "temperature": 0.2,
+            "temperature": TEMPERATURA_PADRAO,
             "num_ctx": 8192,
             "num_predict": 4096,
         },
@@ -310,13 +355,15 @@ def chat_ollama(messages: list[dict], iteration: int) -> str:
 
 
 def run_agent(user_message: str) -> str:                 
-    ctx.mensagem = f"{user_message}, use 'tool_call'"    
-    
+    ctx.mensagem = user_message
+
     messages = [
         {"role": "system", "content": build_system_prompt()},
+        {"role": "system", "content": "Regra operacional: se for uma tarefa de arquivos ou diretórios, responda somente com tool_call. Nunca sugira Python, CMD, PowerShell ou código."},
         {"role": "user", "content": ctx.mensagem},
     ]
     executed_tools: list[str] = []
+    tool_retry_count = 0
 
     log_separator()
     ctx.log(f"Inicio do agente | Modelo: {OLLAMA_MODEL}")
@@ -333,10 +380,17 @@ def run_agent(user_message: str) -> str:
         tool_calls = extract_tool_calls(assistant_text)
 
         if not tool_calls:
+            if tarefa_executavel_localmente(user_message) and tool_retry_count < 2:
+                tool_retry_count += 1
+                ctx.log("  [ajuste] Resposta sem tool_call; reenviando com instrução mais rígida.")
+                messages.append({"role": "user", "content": mensagem_correcao_tool_call()})
+                continue
+
             log_separator()
             ctx.log("Execucao concluida com sucesso.")
             log_separator()
-            ctx.registrar_memoria(ctx.mensagem, executed_tools, assistant_text)
+            if executed_tools:
+                ctx.registrar_memoria(ctx.mensagem, executed_tools, assistant_text)
             return assistant_text
 
         results = []
@@ -349,13 +403,13 @@ def run_agent(user_message: str) -> str:
             ctx.log(f"  Resultado: {preview}")
             results.append(f"Resultado '{tool_name}':\n{result}")
             
-            if not preview == '' and not '[ERRO]' in preview :                
-                ctx.registrar_memoria(ctx.mensagem, executed_tools, preview)
-            
-        messages.append({
-            "role": "user",
-            "content": "\n\n".join(results),
-        })
+        combined_result = "\n\n".join(results)
+        if executed_tools:
+            ctx.registrar_memoria(ctx.mensagem, executed_tools, combined_result)
+        log_separator()
+        ctx.log("Execucao concluida com sucesso.")
+        log_separator()
+        return combined_result
 
     ctx.log("[AVISO] Limite de iteracoes atingido.")
     return "[AVISO] Limite de iteracoes atingido."
